@@ -1,0 +1,39 @@
+app_name: dozer-personalized-banking-rag
+version: 1
+connections:
+  - name: banking_postgres
+    config: !Postgres
+      user: postgres
+      password: password
+      host: localhost
+      port: 5432
+      database: core_banking
+
+sources:
+  - name: customers
+    connection: banking_postgres
+    table_name: customers
+  - name: transactions
+    connection: banking_postgres
+    table_name: transactions
+
+sql: |
+  SELECT
+    c.customer_id,
+    c.name,
+    c.tier,
+    c.risk_tolerance,
+    COUNT(t.tx_id) AS tx_count,
+    SUM(t.amount_usd) AS total_spend_usd
+  INTO customer_realtime_summary
+  FROM customers c
+  INNER JOIN transactions t ON c.customer_id = t.customer_id
+  GROUP BY c.customer_id, c.name, c.tier, c.risk_tolerance;
+
+endpoints:
+  - name: customer_realtime_summary
+    path: /customer_realtime_summary
+    table_name: customer_realtime_summary
+    index:
+      primary_key:
+        - customer_id
